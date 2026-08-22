@@ -119,6 +119,40 @@ app.post("/api/translate", requireApiKey, translateLimiter, async (req, res) => 
   }
 });
 
+const books = [
+  {
+    id: 2701,
+    title: "Moby Dick; Or, The Whale",
+    author: "Herman Melville",
+    level: "B2",
+    language: "en",
+    coverUrl: "https://www.gutenberg.org/cache/epub/2701/pg2701.cover.medium.jpg",
+    downloadUrl: "https://www.gutenberg.org/ebooks/2701.epub3.images"
+  },
+  {
+    id: 1342,
+    title: "Pride and Prejudice",
+    author: "Jane Austen",
+    level: "B2",
+    language: "en",
+    coverUrl: "https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg",
+    downloadUrl: "https://www.gutenberg.org/ebooks/1342.epub3.images"
+  },
+  {
+    id: 1513,
+    title: "Romeo and Juliet",
+    author: "William Shakespeare",
+    level: "B2",
+    language: "en",
+    coverUrl: "https://www.gutenberg.org/cache/epub/1513/pg1513.cover.medium.jpg",
+    downloadUrl: "https://www.gutenberg.org/ebooks/1513.epub3.images"
+  }
+];
+
+app.get("/api/books", requireApiKey, (_, res) => {
+  res.json(books);
+});
+
 app.listen(port, () => {
   console.log(`Smart-Trex API started on port ${port}`);
 });
