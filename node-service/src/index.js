@@ -119,7 +119,9 @@ app.post("/api/translate", requireApiKey, translateLimiter, async (req, res) => 
   }
 });
 
-const supportedBookLanguages = new Set(["en", "es", "fr", "de", "pt"]);
+function isValidLanguageCode(value) {
+  return /^[a-z]{2}$/.test(value);
+}
 
 function getBookAuthor(book) {
   const author = book.authors?.[0];
@@ -153,9 +155,9 @@ app.get("/api/books", requireApiKey, async (req, res) => {
 
     const page = Number.parseInt(rawPage, 10);
 
-    if (!supportedBookLanguages.has(language)) {
+    if (!isValidLanguageCode(language)) {
       return res.status(400).json({
-        error: "Unsupported language"
+        error: "Invalid language"
       });
     }
 
@@ -185,7 +187,7 @@ app.get("/api/books", requireApiKey, async (req, res) => {
         id: book.id,
         title: book.title,
         author: getBookAuthor(book),
-        language: book.languages?.[0] || language,
+        language,
         coverUrl: getBookCoverUrl(book),
         downloadUrl: getBookDownloadUrl(book)
       }))
