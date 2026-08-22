@@ -119,38 +119,91 @@ app.post("/api/translate", requireApiKey, translateLimiter, async (req, res) => 
   }
 });
 
-const books = [
-  {
-    id: 2701,
-    title: "Moby Dick; Or, The Whale",
-    author: "Herman Melville",
-    level: "B2",
-    language: "en",
-    coverUrl: "https://www.gutenberg.org/cache/epub/2701/pg2701.cover.medium.jpg",
-    downloadUrl: "https://www.gutenberg.org/ebooks/2701.epub3.images"
-  },
-  {
-    id: 1342,
-    title: "Pride and Prejudice",
-    author: "Jane Austen",
-    level: "B2",
-    language: "en",
-    coverUrl: "https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg",
-    downloadUrl: "https://www.gutenberg.org/ebooks/1342.epub3.images"
-  },
-  {
-    id: 1513,
-    title: "Romeo and Juliet",
-    author: "William Shakespeare",
-    level: "B2",
-    language: "en",
-    coverUrl: "https://www.gutenberg.org/cache/epub/1513/pg1513.cover.medium.jpg",
-    downloadUrl: "https://www.gutenberg.org/ebooks/1513.epub3.images"
-  }
-];
+const supportedBookLanguages = new Set(["en", "es", "fr", "de", "pt"]);
 
-app.get("/api/books", requireApiKey, (_, res) => {
-  res.json(books);
+function getBookAuthor(book) {
+  const author = book.authors?.[0];
+
+  return author?.name || "Unknown author";
+}
+
+function getBookCoverUrl(book) {
+  return book.formats?.["image/jpeg"] || null;
+}
+
+function getBookDownloadUrl(book) {
+  const formats = book.formats || {};
+
+  return (
+    formats["application/epub+zip"] ||
+    formats["application/epub+zip; charset=utf-8"] ||
+    null
+  );
+}
+
+app.get("/api/books", requireApiKey, async (req, res) => {
+  try {
+    const language = typeof req.query.language === "string"
+      ? req.query.language.toLowerCase()
+      : "en";
+
+    const rawPage = typeof req.query.page === "string"
+      ? req.query.page
+      : "1";
+
+    const page = Number.parseInt(rawPage, 10);
+
+    if (!supportedBookLanguages.has(language)) {
+      return res.status(400).json({
+        error: "Unsupported language"
+      });
+    }
+
+    if (!Number.isInteger(page) || page < 1) {
+      return res.status(400).json({
+        error: "Invalid page"
+      });
+    }
+
+    const gutendexURL = new URL("https://gutendex.com/books");
+    gutendexURL.searchParams.set("languages", language);
+    gutendexURL.searchParams.set("copyright", "false");
+    gutendexURL.searchParams.set("page", String(page));
+
+    const response = await fetch(gutendexURL);
+
+    if (!response.ok) {
+      return res.status(502).json({
+        error: "Book catalog provider error"
+      });
+    }
+
+    const data = await response.json();
+
+    const books = data.results
+      .map((book) => ({
+        id: book.id,
+        title: book.title,
+        author: getBookAuthor(book),
+        language: book.languages?.[0] || language,
+        coverUrl: getBookCoverUrl(book),
+        downloadUrl: getBookDownloadUrl(book)
+      }))
+      .filter((book) => book.downloadUrl);
+
+    return res.json({
+      page,
+      count: data.count,
+      hasNextPage: Boolean(data.next),
+      books
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: "Internal server error"
+    });
+  }
 });
 
 app.listen(port, () => {
