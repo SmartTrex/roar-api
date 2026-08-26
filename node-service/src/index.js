@@ -119,6 +119,95 @@ app.post("/api/translate", requireApiKey, translateLimiter, async (req, res) => 
   }
 });
 
+function isValidLanguageCode(value) {
+  return /^[a-z]{2}$/.test(value);
+}
+
+function getBookAuthor(book) {
+  const author = book.authors?.[0];
+
+  return author?.name || "Unknown author";
+}
+
+function getBookCoverUrl(book) {
+  return book.formats?.["image/jpeg"] || null;
+}
+
+function getBookDownloadUrl(book) {
+  const formats = book.formats || {};
+
+  return (
+    formats["application/epub+zip"] ||
+    formats["application/epub+zip; charset=utf-8"] ||
+    null
+  );
+}
+
+app.get("/api/books", requireApiKey, async (req, res) => {
+  try {
+    const language = typeof req.query.language === "string"
+      ? req.query.language.toLowerCase()
+      : "en";
+
+    const rawPage = typeof req.query.page === "string"
+      ? req.query.page
+      : "1";
+
+    const page = Number.parseInt(rawPage, 10);
+
+    if (!isValidLanguageCode(language)) {
+      return res.status(400).json({
+        error: "Invalid language"
+      });
+    }
+
+    if (!Number.isInteger(page) || page < 1) {
+      return res.status(400).json({
+        error: "Invalid page"
+      });
+    }
+
+    const gutendexURL = new URL("https://gutendex.com/books");
+    gutendexURL.searchParams.set("languages", language);
+    gutendexURL.searchParams.set("copyright", "false");
+    gutendexURL.searchParams.set("page", String(page));
+
+    const response = await fetch(gutendexURL);
+
+    if (!response.ok) {
+      return res.status(502).json({
+        error: "Book catalog provider error"
+      });
+    }
+
+    const data = await response.json();
+
+    const books = data.results
+      .map((book) => ({
+        id: book.id,
+        title: book.title,
+        author: getBookAuthor(book),
+        language,
+        coverUrl: getBookCoverUrl(book),
+        downloadUrl: getBookDownloadUrl(book)
+      }))
+      .filter((book) => book.downloadUrl);
+
+    return res.json({
+      page,
+      count: data.count,
+      hasNextPage: Boolean(data.next),
+      books
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: "Internal server error"
+    });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Smart-Trex API started on port ${port}`);
 });
