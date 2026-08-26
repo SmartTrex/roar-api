@@ -2,9 +2,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package.json packege-lock.json* ./
+COPY package.json package-lock.json* ./
 
-RUN npm install --omit =dev
+RUN npm install --omit=dev
 
 COPY src ./src
 
