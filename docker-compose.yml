@@ -1,0 +1,40 @@
+services:
+  api:
+    build:
+      context: ./node-service
+    container_name: smart-trex-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      libretranslate:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: smart-trex-libretranslate
+    restart: unless-stopped
+    environment:
+      LT_HOST: 0.0.0.0
+      LT_PORT: 5000
+      LT_UPDATE_MODELS: "true"
+      LT_LOAD_ONLY: "en,ru,es"
+      LT_THREADS: "1"
+      LT_WORKERS: "1"
+      LT_CHAR_LIMIT: 300
+      LT_REQ_LIMIT: "20"
+    volumes:
+      - libretranslate_data:/home/libretranslate/.local
+    expose:
+      - "5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/languages', timeout=5)"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
+
+volumes:
+  libretranslate_data:

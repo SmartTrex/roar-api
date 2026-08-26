@@ -1,0 +1,14 @@
+name: Deploy Node Service
+
+on:
+  push:
+    tags:
+      - 'DEPLOY_ROAR'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
