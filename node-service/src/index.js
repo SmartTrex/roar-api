@@ -5,7 +5,7 @@ import rateLimit from "express-rate-limit";
 const app = express();
 
 const port = process.env.API_PORT || 3000;
-const publicApiKey = process.env.API_KEY;
+const publicApiKey = process.env.PUBLIC_API_KEY;
 const libreTranslateUrl = process.env.LIBRETRANSLATE_URL || "http://libretranslate:5000";
 
 app.use(helmet());
