@@ -1,7 +1,6 @@
 services:
   api:
-    build:
-      context: ./node-service
+    image: ghcr.io/smarttrex/roar-api-node:latest
     container_name: smart-trex-api
     restart: unless-stopped
     env_file:
