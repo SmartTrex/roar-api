@@ -1,0 +1,47 @@
+name: Deploy Node Service
+
+on:
+  push:
+    tags:
+      - 'DEPLOY_ROAR'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN}}
+
+      - name: Build Docker image
+        run: docker build -t ghcr.io/smarttrex/roar-api-node:latest ./node-service
+
+      - name: Push Docker image
+        run: docker push ghcr.io/smarttrex/roar-api-node:latest
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to server
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" '
+            cd /opt/smart-trex-backend &&
+            docker compose pull api &&
+            docker compose up -d --no-deps api
+          '
