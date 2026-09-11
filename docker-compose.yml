@@ -1,6 +1,6 @@
 services:
   api:
-    image: ghcr.io/smarttrex/roar-api-node:latest
+    image: ghcr.io/smarttrex/roar-api-node:${IMAGE_TAG:-latest}
     container_name: smart-trex-api
     restart: unless-stopped
     env_file:

@@ -3,11 +3,14 @@ name: Deploy Node Service
 on:
   push:
     tags:
-      - 'DEPLOY_ROAR'
+      - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      IMAGE_TAG: ${{ github.ref_name }}
 
     permissions:
       contents: read
@@ -25,10 +28,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN}}
 
       - name: Build Docker image
-        run: docker build -t ghcr.io/smarttrex/roar-api-node:latest ./node-service
+        run: docker build -t ghcr.io/smarttrex/roar-api-node:${IMAGE_TAG} ./node-service
 
       - name: Push Docker image
-        run: docker push ghcr.io/smarttrex/roar-api-node:latest
+        run: docker push ghcr.io/smarttrex/roar-api-node:${IMAGE_TAG}
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.10.0
