@@ -45,6 +45,6 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" '
             cd /opt/smart-trex-backend &&
-            docker compose pull api &&
-            docker compose up -d --no-deps api
+            IMAGE_TAG='$IMAGE_TAG' docker compose pull api &&
+            IMAGE_TAG='$IMAGE_TAG' docker compose up -d --no-deps api
           '
