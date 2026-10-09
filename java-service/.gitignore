@@ -39,3 +39,4 @@ out/
 build/
 .gradle/
 .idea/
+catalog/books/
