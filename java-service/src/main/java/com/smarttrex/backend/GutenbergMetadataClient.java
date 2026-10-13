@@ -32,7 +32,7 @@ public class GutenbergMetadataClient {
 
     public GutenbergBookMetadata getMetadata(Long bookId) throws Exception {
         String metadataUrl =
-                "https://www.gutenberg.org/cache/epub/"
+                "https://dev.gutenberg.org/cache/epub/"
                 + bookId
                 + "/pg"
                 + bookId
@@ -50,34 +50,39 @@ public class GutenbergMetadataClient {
                 HttpResponse.BodyHandlers.ofInputStream()
         );
 
-        if (response.statusCode() !=200) {
-            throw new RuntimeException(
-                    "Не удалось получить metadata книги "
-                            + bookId
-                            + ". HTTP status: "
-                            + response.statusCode()
+
+        try (InputStream body = response.body()) {
+
+            if (response.statusCode() != 200) {
+                throw new RuntimeException(
+                        "Не удалось получить metadata книги "
+                                + bookId
+                                + ". HTTP status: "
+                                + response.statusCode()
+                );
+            }
+
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(body);
+
+            String title = getFirstText(
+                    document,
+                    "http://purl.org/dc/terms/",
+                    "title"
             );
+
+            String author = getAuthor(document);
+
+            String language = getLanguage(document);
+
+            return new GutenbergBookMetadata(
+                    bookId,
+                    title,
+                    author,
+                    language
+            );
+
         }
-
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        Document document = builder.parse(response.body());
-
-        String title = getFirstText(
-                document,
-                "http://purl.org/dc/terms/",
-                "title"
-        );
-
-        String author = getAuthor(document);
-
-        String language = getLanguage(document);
-
-        return new GutenbergBookMetadata(
-                bookId,
-                title,
-                author,
-                language
-        );
 
     }
 

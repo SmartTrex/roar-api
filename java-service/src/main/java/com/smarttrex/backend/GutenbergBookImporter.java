@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.ArrayList;
 
 public class GutenbergBookImporter {
 
@@ -24,6 +25,10 @@ public class GutenbergBookImporter {
 
         Files.createDirectories(booksDir);
 
+        Path coversDir = catalogDir.resolve("covers");
+
+        Files.createDirectories(coversDir);
+
         //Читаем selection.Json
         ObjectMapper objectMapper =new ObjectMapper();
         List <Long> bookIds = objectMapper.readValue(
@@ -36,11 +41,15 @@ public class GutenbergBookImporter {
                 .connectTimeout(Duration.ofSeconds(30))
                 .build();
 
+        GutenbergMetadataClient metadataClient = new GutenbergMetadataClient();
+
+        List<CatalogBook> catalogBooks = new ArrayList<>();
+
         //Загружаем каждую выбранную книгу
         for (long bookId : bookIds) {
 
             String epubUrl =
-                    "https://www.gutenberg.org/cache/epub/"
+                    "https://dev.gutenberg.org/cache/epub/"
                         +bookId
                         +"/pg"
                         +bookId
@@ -75,7 +84,84 @@ public class GutenbergBookImporter {
             }
             System.out.println("Готово: " + outputFile.toAbsolutePath());
 
+            GutenbergMetadataClient.GutenbergBookMetadata metadata =
+                    metadataClient.getMetadata(bookId);
+
+            System.out.println("Название: " + metadata.title());
+            System.out.println("Автор: " + metadata. author());
+            System.out.println("Язык: " + metadata. language());
+
+            //Адрес обложки на Gutenberg
+            String remoteCoverUrl =
+                    "https://dev.gutenberg.org/cache/epub/"
+                    + bookId
+                    + "/pg"
+                    +bookId
+                    + ".cover.medium.jpg";
+
+            //Куда сохраняем обложку на пк
+            Path coverFile = coversDir.resolve(bookId + ".jpg");
+
+            //пока считаем что обложки нет
+            String localCoverUrl = null;
+
+            try {
+                HttpRequest coverRequest = HttpRequest.newBuilder()
+                        .uri(URI.create(remoteCoverUrl))
+                        .timeout(Duration.ofMinutes(2))
+                        .header("User-Agent", "SmartTrexBookImporter/1.0")
+                        .GET()
+                        .build();
+
+                HttpResponse<Path> coverResponse = httpClient.send(
+                        coverRequest,
+                        HttpResponse.BodyHandlers.ofFile(coverFile)
+                );
+
+                if (coverResponse.statusCode() == 200) {
+                    localCoverUrl = "/covers/" +bookId + ".jpg";
+
+                    System.out.println(
+                            "Обложка сохранена: " + coverFile.toAbsolutePath()
+                    );
+                } else {
+                    Files.deleteIfExists(coverFile);
+
+                    System.out.println(
+                            "Не удалось скачать обложку. HTTP status: "
+                                    +coverResponse.statusCode()
+                    );
+                }
+
+
+            } catch (Exception e) {
+                Files.deleteIfExists(coverFile);
+
+                System.out.println(
+                        "Ошибка загрузки обложки: " + e.getMessage()
+                );
+            }
+
+            CatalogBook catalogBook = new CatalogBook(
+                    bookId,
+                    metadata.title(),
+                    metadata.author(),
+                    metadata.language(),
+                    "/books/" +bookId + ".epub",
+                    localCoverUrl
+            );
+
+            catalogBooks.add(catalogBook);
+
         }
+
+        Path catalogFile = catalogDir.resolve("catalog.json");
+
+        objectMapper.writeValue(catalogFile, catalogBooks);
+
+        System.out.println(
+                "Каталог сохранен: " + catalogFile.toAbsolutePath()
+        );
 
     }
 }
