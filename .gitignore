@@ -26,3 +26,5 @@ replay_pid*
 
 .env
 *.env
+/java-service/catalog/books/
+/java-service/catalog/covers/
